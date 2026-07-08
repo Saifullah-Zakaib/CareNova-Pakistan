@@ -1,11 +1,14 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { PublicNav } from "@/components/public-nav";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Mail, Lock, Eye, EyeOff, ArrowRight, ShieldCheck, HeartPulse, Sparkles, Stethoscope, Users, ShieldAlert } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, ArrowRight, ShieldCheck, HeartPulse, Sparkles, Stethoscope, Users, ShieldAlert, Loader2 } from "lucide-react";
 import { useState } from "react";
+import { authAPI } from "@/lib/api/auth.api";
+import { getErrorMessage } from "@/lib/api-client";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/login")({
   head: () => ({ meta: [{ title: "Sign in — CareNova" }] }),
@@ -13,7 +16,51 @@ export const Route = createFileRoute("/login")({
 });
 
 function Login() {
+  const navigate = useNavigate();
   const [show, setShow] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+    remember: false,
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!formData.email || !formData.password) {
+      toast.error("Please fill in all fields");
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const response = await authAPI.login({
+        email: formData.email,
+        password: formData.password,
+      });
+
+      if (response.success && response.data) {
+        toast.success(response.message || "Login successful!");
+        
+        // Redirect based on user role
+        const { role } = response.data.user;
+        if (role === "PATIENT") {
+          navigate({ to: "/patient" });
+        } else if (role === "DOCTOR") {
+          navigate({ to: "/doctor" });
+        } else if (role === "ADMIN") {
+          navigate({ to: "/admin" });
+        }
+      }
+    } catch (error: any) {
+      const message = getErrorMessage(error);
+      toast.error(message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
   return (
     <div className="min-h-screen gradient-hero relative overflow-hidden">
       <PublicNav />
@@ -89,22 +136,40 @@ function Login() {
                 <span className="h-px flex-1 bg-border" />
               </div>
 
-              <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
+              <form className="space-y-4" onSubmit={handleSubmit}>
                 <div>
                   <Label htmlFor="email" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Email</Label>
                   <div className="relative mt-1.5">
                     <Mail className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input id="email" type="email" placeholder="you@example.com" className="h-12 rounded-xl pl-10" />
+                    <Input 
+                      id="email" 
+                      type="email" 
+                      placeholder="you@example.com" 
+                      className="h-12 rounded-xl pl-10" 
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      required
+                      disabled={isLoading}
+                    />
                   </div>
                 </div>
                 <div>
                   <div className="flex items-center justify-between">
                     <Label htmlFor="password" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Password</Label>
-                    <a href="#" className="text-xs font-semibold text-primary hover:underline">Forgot?</a>
+                    <Link to="/forgot-password" className="text-xs font-semibold text-primary hover:underline">Forgot?</Link>
                   </div>
                   <div className="relative mt-1.5">
                     <Lock className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input id="password" type={show ? "text" : "password"} placeholder="••••••••" className="h-12 rounded-xl pl-10 pr-10" />
+                    <Input 
+                      id="password" 
+                      type={show ? "text" : "password"} 
+                      placeholder="••••••••" 
+                      className="h-12 rounded-xl pl-10 pr-10" 
+                      value={formData.password}
+                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                      required
+                      disabled={isLoading}
+                    />
                     <button
                       type="button"
                       onClick={() => setShow(!show)}
@@ -117,13 +182,29 @@ function Login() {
                 </div>
 
                 <label className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Checkbox id="remember" /> <span>Keep me signed in for 30 days</span>
+                  <Checkbox 
+                    id="remember" 
+                    checked={formData.remember}
+                    onCheckedChange={(checked) => setFormData({ ...formData, remember: !!checked })}
+                  /> 
+                  <span>Keep me signed in for 30 days</span>
                 </label>
 
-                <Button asChild className="h-12 w-full rounded-xl text-base font-semibold shadow-md shadow-primary/25">
-                  <Link to="/patient">
-                    Sign in <ArrowRight className="ml-2 h-4 w-4" />
-                  </Link>
+                <Button 
+                  type="submit" 
+                  className="h-12 w-full rounded-xl text-base font-semibold shadow-md shadow-primary/25"
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Signing in...
+                    </>
+                  ) : (
+                    <>
+                      Sign in <ArrowRight className="ml-2 h-4 w-4" />
+                    </>
+                  )}
                 </Button>
               </form>
 

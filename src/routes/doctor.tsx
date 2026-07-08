@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { PortalShell, type NavItem } from "@/components/portal-shell";
+import { ProtectedRoute } from "@/components/protected-route";
+import { useAuth } from "@/contexts/auth.context";
 import { LayoutDashboard, CalendarDays, Users, FolderHeart, Pill, BookOpen, Star, Clock, User, Settings } from "lucide-react";
 
 const items: NavItem[] = [
@@ -15,9 +17,25 @@ const items: NavItem[] = [
   { to: "/doctor/settings", label: "Settings", icon: Settings, group: "Account" },
 ];
 
+function DoctorPortal() {
+  const { user } = useAuth();
+
+  return (
+    <ProtectedRoute allowedRoles={['DOCTOR']}>
+      <PortalShell 
+        role="Doctor" 
+        items={items} 
+        user={{ 
+          name: user ? `Dr. ${user.firstName} ${user.lastName}` : "Doctor", 
+          sub: `${user?.doctorProfile?.specialization || 'Doctor'} · ${user?.city || 'Pakistan'}`, 
+          image: user?.profileImage || `https://api.dicebear.com/9.x/avataaars/svg?seed=${user?.email}` 
+        }} 
+      />
+    </ProtectedRoute>
+  );
+}
+
 export const Route = createFileRoute("/doctor")({
   head: () => ({ meta: [{ title: "Doctor Portal — CareNova" }] }),
-  component: () => (
-    <PortalShell role="Doctor" items={items} user={{ name: "Dr. Ayesha Khan", sub: "Cardiologist · AKUH", image: "https://api.dicebear.com/9.x/avataaars/svg?seed=Ayesha%20Khan" }} />
-  ),
+  component: DoctorPortal,
 });
