@@ -25,6 +25,42 @@ enum DoctorStatus {
   PENDING
   APPROVED
   REJECTED
+  SUSPENDED
+  BLOCKED
+}
+
+enum ConsultationType {
+  ONLINE
+  PHYSICAL
+  BOTH
+}
+
+enum HospitalType {
+  GOVERNMENT
+  PRIVATE
+  SEMI_GOVERNMENT
+  CHARITABLE
+}
+
+enum BloodGroup {
+  A_POSITIVE
+  A_NEGATIVE
+  B_POSITIVE
+  B_NEGATIVE
+  AB_POSITIVE
+  AB_NEGATIVE
+  O_POSITIVE
+  O_NEGATIVE
+}
+
+enum DayOfWeek {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
 }
 
 model User {
@@ -65,13 +101,38 @@ model PatientProfile {
   userId    String   @unique
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   
-  // Additional patient-specific fields can be added here
-  bloodGroup String?
-  allergies  String?
+  // Medical Information
+  bloodGroup       BloodGroup?
+  height           Float?       // in cm
+  weight           Float?       // in kg
+  allergies        String[]     @default([])
+  chronicDiseases  String[]     @default([])
+  currentMedications String[]   @default([])
+  medicalHistory   String?      // Summary
+  
+  // Lifestyle Information
+  smoking          Boolean      @default(false)
+  alcohol          Boolean      @default(false)
+  
+  // Emergency Contact
+  emergencyContactName  String?
+  emergencyContactPhone String?
+  emergencyContactRelation String?
+  
+  // Address
+  address          String?
+  areaId           String?
+  area             Area?        @relation(fields: [areaId], references: [id])
+  postalCode       String?
+  country          String       @default("Pakistan")
+  
+  // Relations
+  favoriteDoctors  FavoriteDoctor[]
   
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([areaId])
   @@map("patient_profiles")
 }
 
@@ -81,25 +142,45 @@ model DoctorProfile {
   user                User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   
   qualification       String
-  specialization      String
+  specializationId    String?
+  specialization      Specialization? @relation(fields: [specializationId], references: [id])
   yearsOfExperience   Int
   pmdcLicenseNumber   String        @unique
   consultationFee     Float
-  hospitalName        String
+  consultationType    ConsultationType @default(BOTH)
+  
+  // Hospital relation
+  hospitalId          String?
+  hospital            Hospital?     @relation(fields: [hospitalId], references: [id])
+  hospitalName        String        // Kept for backward compatibility
+  
   languages           String[]      @default([])
   bio                 String?
   medicalLicenseDoc   String?       // Document URL
   
+  // Rating & Reviews
+  rating              Float         @default(0)
+  reviewsCount        Int           @default(0)
+  
+  // Verification
   status              DoctorStatus  @default(PENDING)
   approvedAt          DateTime?
   approvedBy          String?       // Admin user ID
   rejectionReason     String?
   
+  // Relations
+  availability        DoctorAvailability[]
+  education           DoctorEducation[]
+  experience          DoctorExperience[]
+  favorited           FavoriteDoctor[]
+  
   createdAt           DateTime      @default(now())
   updatedAt           DateTime      @updatedAt
 
   @@index([status])
-  @@index([specialization])
+  @@index([specializationId])
+  @@index([hospitalId])
+  @@index([rating])
   @@map("doctor_profiles")
 }
 
@@ -151,4 +232,165 @@ model PasswordReset {
   @@index([userId])
   @@index([token])
   @@map("password_resets")
+}
+
+// Master Tables
+model City {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  slug      String   @unique
+  isActive  Boolean  @default(true)
+  
+  areas     Area[]
+  hospitals Hospital[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([slug])
+  @@map("cities")
+}
+
+model Area {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String
+  cityId    String
+  city      City     @relation(fields: [cityId], references: [id], onDelete: Cascade)
+  isActive  Boolean  @default(true)
+  
+  patientProfiles PatientProfile[]
+  hospitals       Hospital[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([cityId, slug])
+  @@index([cityId])
+  @@index([slug])
+  @@map("areas")
+}
+
+model Specialization {
+  id              String   @id @default(uuid())
+  name            String   @unique
+  slug            String   @unique
+  description     String?
+  icon            String?
+  isActive        Boolean  @default(true)
+  
+  doctors         DoctorProfile[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([slug])
+  @@map("specializations")
+}
+
+model Hospital {
+  id                  String       @id @default(uuid())
+  name                String
+  type                HospitalType @default(PRIVATE)
+  address             String
+  cityId              String
+  city                City         @relation(fields: [cityId], references: [id])
+  areaId              String?
+  area                Area?        @relation(fields: [areaId], references: [id])
+  phone               String?
+  website             String?
+  email               String?
+  logo                String?
+  description         String?
+  latitude            Float?
+  longitude           Float?
+  emergencyAvailable  Boolean      @default(false)
+  rating              Float        @default(0)
+  isActive            Boolean      @default(true)
+  
+  doctors             DoctorProfile[]
+  
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+
+  @@index([cityId])
+  @@index([areaId])
+  @@index([type])
+  @@index([rating])
+  @@map("hospitals")
+}
+
+// Doctor Related Tables
+model DoctorAvailability {
+  id              String      @id @default(uuid())
+  doctorId        String
+  doctor          DoctorProfile @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  
+  dayOfWeek       DayOfWeek
+  startTime       String      // Format: "09:00"
+  endTime         String      // Format: "17:00"
+  breakStartTime  String?     // Format: "13:00"
+  breakEndTime    String?     // Format: "14:00"
+  maxPatients     Int         @default(20)
+  isActive        Boolean     @default(true)
+  
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@unique([doctorId, dayOfWeek])
+  @@index([doctorId])
+  @@map("doctor_availability")
+}
+
+model DoctorEducation {
+  id          String      @id @default(uuid())
+  doctorId    String
+  doctor      DoctorProfile @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  
+  degree      String
+  university  String
+  country     String      @default("Pakistan")
+  startYear   Int
+  endYear     Int?        // Null for ongoing
+  description String?
+  
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@index([doctorId])
+  @@map("doctor_education")
+}
+
+model DoctorExperience {
+  id          String      @id @default(uuid())
+  doctorId    String
+  doctor      DoctorProfile @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  
+  hospitalName String
+  position    String
+  startDate   DateTime
+  endDate     DateTime?   // Null for current position
+  description String?
+  isCurrent   Boolean     @default(false)
+  
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@index([doctorId])
+  @@map("doctor_experience")
+}
+
+model FavoriteDoctor {
+  id              String         @id @default(uuid())
+  patientId       String
+  patient         PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  doctorId        String
+  doctor          DoctorProfile  @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  
+  createdAt       DateTime       @default(now())
+
+  @@unique([patientId, doctorId])
+  @@index([patientId])
+  @@index([doctorId])
+  @@map("favorite_doctors")
 }

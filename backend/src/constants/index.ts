@@ -55,6 +55,8 @@ export const MESSAGES = {
   DOCTOR_PENDING_APPROVAL: 'Doctor account pending approval',
   DOCTOR_NOT_APPROVED: 'Doctor account not approved yet',
   DOCTOR_REJECTED: 'Doctor account has been rejected',
+  DOCTOR_SUSPENDED: 'Doctor account has been suspended',
+  DOCTOR_BLOCKED: 'Doctor account has been blocked',
 } as const;
 
 export const ROLES = {
