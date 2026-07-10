@@ -22,7 +22,7 @@ interface RegisterPatientDto {
 
 interface RegisterDoctorDto extends RegisterPatientDto {
   qualification: string;
-  specialization: string;
+  specialization?: string; // specializationId
   yearsOfExperience: number;
   pmdcLicenseNumber: string;
   consultationFee: number;
@@ -151,7 +151,9 @@ class AuthService {
           doctorProfile: {
             create: {
               qualification: data.qualification,
-              specialization: data.specialization,
+              specialization: data.specialization
+                ? { connect: { id: data.specialization } }
+                : undefined,
               yearsOfExperience: data.yearsOfExperience,
               pmdcLicenseNumber: data.pmdcLicenseNumber,
               consultationFee: data.consultationFee,
@@ -233,12 +235,24 @@ class AuthService {
     }
 
     // For doctors, check approval status
-    if (user.role === Role.DOCTOR && user.doctorProfile) {
-      if (user.doctorProfile.status === 'PENDING') {
-        throw new Error(MESSAGES.DOCTOR_PENDING_APPROVAL);
-      }
-      if (user.doctorProfile.status === 'REJECTED') {
-        throw new Error(MESSAGES.DOCTOR_REJECTED);
+    if (user.role === Role.DOCTOR) {
+      const doctorProfile = await prisma.doctorProfile.findUnique({
+        where: { userId: user.id },
+      });
+
+      if (doctorProfile) {
+        if (doctorProfile.status === 'PENDING') {
+          throw new Error(MESSAGES.DOCTOR_PENDING_APPROVAL);
+        }
+        if (doctorProfile.status === 'REJECTED') {
+          throw new Error(MESSAGES.DOCTOR_REJECTED);
+        }
+        if (doctorProfile.status === 'SUSPENDED') {
+          throw new Error(MESSAGES.DOCTOR_SUSPENDED);
+        }
+        if (doctorProfile.status === 'BLOCKED') {
+          throw new Error(MESSAGES.DOCTOR_BLOCKED);
+        }
       }
     }
 
@@ -330,6 +344,12 @@ class AuthService {
       throw new Error(MESSAGES.INVALID_TOKEN);
     }
 
+    // Get user
+    const user = await userRepository.findById(verification.userId);
+    if (!user) {
+      throw new Error(MESSAGES.USER_NOT_FOUND);
+    }
+
     // Update user and mark token as used in transaction
     await prisma.$transaction(async (tx) => {
       await tx.user.update({
@@ -346,8 +366,8 @@ class AuthService {
     // Send welcome email (don't block if it fails)
     try {
       await sendWelcomeEmail(
-        verification.user.email,
-        `${verification.user.firstName} ${verification.user.lastName}`
+        user.email,
+        `${user.firstName} ${user.lastName}`
       );
     } catch (emailError) {
       console.error('Failed to send welcome email:', emailError);
