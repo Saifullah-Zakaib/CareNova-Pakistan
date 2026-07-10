@@ -19,27 +19,27 @@ export function ProtectedRoute({
 
   useEffect(() => {
     if (!isLoading) {
-      // Not authenticated - redirect to login
-      if (!isAuthenticated) {
-        navigate({ to: '/login' });
+      // Not authenticated - redirect to login immediately
+      if (!isAuthenticated || !user) {
+        navigate({ to: '/login', replace: true });
         return;
       }
 
       // Email verification required but not verified
-      if (requireEmailVerification && user && !user.isEmailVerified) {
-        navigate({ to: '/verify-email-prompt' });
+      if (requireEmailVerification && !user.isEmailVerified) {
+        navigate({ to: '/verify-email-prompt', replace: true });
         return;
       }
 
       // Role-based access control
-      if (allowedRoles && user && !allowedRoles.includes(user.role)) {
+      if (allowedRoles && !allowedRoles.includes(user.role)) {
         // Redirect to appropriate dashboard based on actual role
         if (user.role === 'PATIENT') {
-          navigate({ to: '/patient' });
+          navigate({ to: '/patient', replace: true });
         } else if (user.role === 'DOCTOR') {
-          navigate({ to: '/doctor' });
+          navigate({ to: '/doctor', replace: true });
         } else if (user.role === 'ADMIN') {
-          navigate({ to: '/admin' });
+          navigate({ to: '/admin', replace: true });
         }
       }
     }

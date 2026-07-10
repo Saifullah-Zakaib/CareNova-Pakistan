@@ -1,8 +1,9 @@
 import { Link } from "@tanstack/react-router";
-import { Menu, Search, X, ArrowRight } from "lucide-react";
+import { Menu, Search, X, ArrowRight, LayoutDashboard } from "lucide-react";
 import { useState } from "react";
 import { Brand } from "./brand";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/auth.context";
 
 const links = [
   { to: "/", label: "Home" },
@@ -15,6 +16,17 @@ const links = [
 
 export function PublicNav() {
   const [open, setOpen] = useState(false);
+  const { user, isAuthenticated } = useAuth();
+
+  // Determine dashboard route based on user role
+  const getDashboardRoute = () => {
+    if (!user) return "/";
+    if (user.role === "PATIENT") return "/patient";
+    if (user.role === "DOCTOR") return "/doctor";
+    if (user.role === "ADMIN") return "/admin";
+    return "/";
+  };
+
   return (
     <header className="absolute inset-x-0 top-0 z-40">
       <div className="mx-auto flex h-20 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
@@ -40,22 +52,39 @@ export function PublicNav() {
           >
             <Search className="h-4 w-4" />
           </button>
-          <Button
-            asChild
-            variant="ghost"
-            className="hidden rounded-full px-5 font-semibold text-foreground hover:text-primary md:inline-flex"
-          >
-            <Link to="/login">Sign in</Link>
-          </Button>
-          <Button
-            asChild
-            className="hidden rounded-full px-5 font-semibold shadow-md shadow-primary/20 md:inline-flex"
-          >
-            <Link to="/register">
-              Get started
-              <ArrowRight className="ml-1.5 h-4 w-4" />
-            </Link>
-          </Button>
+          
+          {/* Show Dashboard button if user is authenticated, otherwise show Sign in / Get started */}
+          {isAuthenticated && user ? (
+            <Button
+              asChild
+              className="hidden rounded-full px-5 font-semibold shadow-md shadow-primary/20 md:inline-flex"
+            >
+              <Link to={getDashboardRoute()}>
+                <LayoutDashboard className="mr-1.5 h-4 w-4" />
+                Dashboard
+              </Link>
+            </Button>
+          ) : (
+            <>
+              <Button
+                asChild
+                variant="ghost"
+                className="hidden rounded-full px-5 font-semibold text-foreground hover:text-primary md:inline-flex"
+              >
+                <Link to="/login">Sign in</Link>
+              </Button>
+              <Button
+                asChild
+                className="hidden rounded-full px-5 font-semibold shadow-md shadow-primary/20 md:inline-flex"
+              >
+                <Link to="/register">
+                  Get started
+                  <ArrowRight className="ml-1.5 h-4 w-4" />
+                </Link>
+              </Button>
+            </>
+          )}
+          
           <button
             className="grid h-10 w-10 place-items-center rounded-full border border-border/60 bg-background/70 text-foreground backdrop-blur hover:bg-muted lg:hidden"
             onClick={() => setOpen(!open)}
@@ -79,12 +108,23 @@ export function PublicNav() {
               </Link>
             ))}
             <div className="mt-2 flex gap-2">
-              <Button asChild variant="outline" className="flex-1 rounded-full">
-                <Link to="/login">Sign in</Link>
-              </Button>
-              <Button asChild className="flex-1 rounded-full">
-                <Link to="/register">Get started</Link>
-              </Button>
+              {isAuthenticated && user ? (
+                <Button asChild className="flex-1 rounded-full">
+                  <Link to={getDashboardRoute()}>
+                    <LayoutDashboard className="mr-1.5 h-4 w-4" />
+                    Dashboard
+                  </Link>
+                </Button>
+              ) : (
+                <>
+                  <Button asChild variant="outline" className="flex-1 rounded-full">
+                    <Link to="/login">Sign in</Link>
+                  </Button>
+                  <Button asChild className="flex-1 rounded-full">
+                    <Link to="/register">Get started</Link>
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         </div>

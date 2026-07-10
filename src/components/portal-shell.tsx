@@ -1,10 +1,11 @@
-import { Link, Outlet, useRouterState } from "@tanstack/react-router";
+import { Link, Outlet, useRouterState, useNavigate } from "@tanstack/react-router";
 import { Bell, Search, Menu, X, ChevronDown, LogOut } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { Brand } from "./brand";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/auth.context";
 
 export type NavItem = { to: string; label: string; icon: LucideIcon; group?: string };
 
@@ -19,6 +20,13 @@ export function PortalShell({
 }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [openMobile, setOpenMobile] = useState(false);
+  const { logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await logout();
+    navigate({ to: '/' });
+  };
 
   // group items
   const groups = items.reduce<Record<string, NavItem[]>>((acc, it) => {
@@ -75,9 +83,13 @@ export function PortalShell({
             <div className="truncate text-sm font-bold text-foreground">{user.name}</div>
             <div className="truncate text-xs text-muted-foreground">{user.sub}</div>
           </div>
-          <Link to="/login" className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-white hover:text-destructive" aria-label="Sign out">
+          <button 
+            onClick={handleLogout}
+            className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-white hover:text-destructive" 
+            aria-label="Sign out"
+          >
             <LogOut className="h-4 w-4" />
-          </Link>
+          </button>
         </div>
       </div>
     </div>
