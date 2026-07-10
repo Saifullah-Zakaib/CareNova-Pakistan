@@ -4,6 +4,8 @@ import { CalendarDays, HeartPulse, FileText, Bookmark, Sparkles, ChevronRight, V
 import { doctors, appointments, timeline } from "@/lib/mock-data";
 import { Button } from "@/components/ui/button";
 import { AreaChart, Area, ResponsiveContainer, XAxis, YAxis, Tooltip, RadialBarChart, RadialBar, PolarAngleAxis } from "recharts";
+import { useFavoriteDoctors } from "@/hooks/use-patient-data";
+import { useAuth } from "@/contexts/auth.context";
 
 export const Route = createFileRoute("/patient/")({
   component: PatientDashboard,
@@ -16,14 +18,20 @@ const bp = [
 const scoreData = [{ name: "score", value: 82, fill: "var(--primary)" }];
 
 function PatientDashboard() {
+  const { user } = useAuth();
+  const { data: favoriteDoctorsData, isLoading: loadingFavorites } = useFavoriteDoctors({ limit: 4 });
   const upcoming = appointments.find(a => a.status === "Upcoming")!;
   const upcomingDoc = doctors.find(d => d.id === upcoming.doctorId)!;
+
+  // Get saved doctors from API or fallback to mock data
+  const savedDoctors = favoriteDoctorsData?.data?.data || [];
+  const hasFavoriteDoctors = savedDoctors.length > 0;
 
   return (
     <div>
       <WelcomeBanner
         greeting="Assalam-o-Alaikum 👋"
-        name="Welcome back, Ali"
+        name={`Welcome back, ${user?.firstName || 'Patient'}`}
         subtitle="Your next appointment is tomorrow at 12:30 PM. Everything looks good — keep it up."
         actions={
           <>
@@ -158,18 +166,41 @@ function PatientDashboard() {
             <div className="text-sm font-bold">Saved doctors</div>
             <Button asChild size="sm" variant="ghost" className="text-primary"><Link to="/patient/saved">All <ChevronRight className="h-4 w-4" /></Link></Button>
           </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {doctors.slice(0, 4).map(d => (
-              <div key={d.id} className="flex items-center gap-3 rounded-xl border border-border/60 p-3">
-                <img src={d.image} className="h-11 w-11 rounded-xl bg-muted" />
-                <div className="min-w-0 flex-1">
-                  <div className="truncate font-semibold">{d.name}</div>
-                  <div className="truncate text-xs text-muted-foreground">{d.specialty} · {d.city}</div>
-                </div>
-                <Button asChild size="sm" className="rounded-full"><Link to="/patient/book" search={{ doctor: d.id }}>Book</Link></Button>
-              </div>
-            ))}
-          </div>
+          {loadingFavorites ? (
+            <div className="py-8 text-center text-sm text-muted-foreground">Loading your saved doctors...</div>
+          ) : hasFavoriteDoctors ? (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {savedDoctors.map((fav: any) => {
+                const doctor = fav.doctor;
+                const doctorName = `${doctor.user.firstName} ${doctor.user.lastName}`;
+                const specialty = doctor.specialization?.name || 'General Physician';
+                const city = doctor.user.city || doctor.hospital?.city?.name || 'Pakistan';
+                const image = doctor.user.profileImage || `https://api.dicebear.com/9.x/avataaars/svg?seed=${doctor.user.email}`;
+                
+                return (
+                  <div key={doctor.id} className="flex items-center gap-3 rounded-xl border border-border/60 p-3">
+                    <img src={image} className="h-11 w-11 rounded-xl bg-muted object-cover" alt={doctorName} />
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate font-semibold">{doctorName}</div>
+                      <div className="truncate text-xs text-muted-foreground">{specialty} · {city}</div>
+                    </div>
+                    <Button asChild size="sm" className="rounded-full">
+                      <Link to="/patient/doctors" search={{ doctorId: doctor.id }}>View</Link>
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="rounded-xl border border-dashed border-border/60 p-8 text-center">
+              <Bookmark className="mx-auto h-12 w-12 text-muted-foreground/40" />
+              <p className="mt-2 text-sm font-medium">No saved doctors yet</p>
+              <p className="mt-1 text-xs text-muted-foreground">Save your favorite doctors for quick access</p>
+              <Button asChild size="sm" className="mt-4 rounded-full">
+                <Link to="/patient/doctors">Find Doctors</Link>
+              </Button>
+            </div>
+          )}
         </div>
 
         <div className="card-elevated rounded-2xl p-5">

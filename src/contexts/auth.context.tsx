@@ -63,12 +63,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     try {
+      // Call backend logout endpoint
       await authAPI.logout();
     } catch (error) {
       console.error('Logout error:', error);
-    } finally {
-      setUser(null);
     }
+    
+    // Clear local storage immediately
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('user');
+    
+    // Clear user state
+    setUser(null);
+    
+    // Force a full page reload to clear all React state
+    window.location.href = '/';
   };
 
   const refreshUser = async () => {

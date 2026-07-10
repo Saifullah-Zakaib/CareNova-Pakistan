@@ -5,6 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { appointments } from "@/lib/mock-data";
 import { AreaChart, Area, ResponsiveContainer, XAxis, YAxis, Tooltip, PieChart, Pie, Cell, Legend } from "recharts";
+import { useDoctorProfile } from "@/hooks/use-doctor-data";
 
 const revenue = [
   { m: "Jan", v: 180 }, { m: "Feb", v: 220 }, { m: "Mar", v: 260 }, { m: "Apr", v: 240 },
