@@ -25,14 +25,14 @@ const storage = multer.diskStorage({
 // File filter
 const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
   // Check file type
-  if (!FILE_UPLOAD.ALLOWED_TYPES.includes(file.mimetype)) {
+  if (!FILE_UPLOAD.ALLOWED_TYPES.includes(file.mimetype as any)) {
     cb(new Error(`Invalid file type. Allowed types: ${FILE_UPLOAD.ALLOWED_TYPES.join(', ')}`));
     return;
   }
 
   // Check file extension
   const ext = path.extname(file.originalname).toLowerCase();
-  if (!FILE_UPLOAD.ALLOWED_EXTENSIONS.includes(ext)) {
+  if (!FILE_UPLOAD.ALLOWED_EXTENSIONS.includes(ext as any)) {
     cb(new Error(`Invalid file extension. Allowed extensions: ${FILE_UPLOAD.ALLOWED_EXTENSIONS.join(', ')}`));
     return;
   }

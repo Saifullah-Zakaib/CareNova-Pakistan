@@ -6,7 +6,7 @@ import { sendValidationError } from '../utils/response.util.js';
  * Validation middleware factory
  */
 export const validate = (schema: AnyZodObject) => {
-  return async (req: Request, res: Response, next: NextFunction) => {
+  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       await schema.parseAsync({
         body: req.body,
@@ -20,7 +20,8 @@ export const validate = (schema: AnyZodObject) => {
           field: err.path.join('.'),
           message: err.message,
         }));
-        return sendValidationError(res, errors);
+        sendValidationError(res, errors);
+        return;
       }
       next(error);
     }
